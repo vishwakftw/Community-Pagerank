@@ -102,3 +102,9 @@ venv.bak/
 /site
 # mypy
 .mypy_cache/
+
+# Result txts
+*.txt
+
+# wiki data
+wikipedia_social_network/
