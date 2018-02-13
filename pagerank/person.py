@@ -41,9 +41,9 @@ class Person(object):
         self.basic = None
         self.occupation = None
 
-def _get_basic(pid):
+def _get_basic(pid, full_path=(PATH + BASIC)):
     details_dict = {}
-    with open(os.path.join(PATH, BASIC), 'r') as f:
+    with open(full_path, 'r') as f:
         for line in f:
             vals = line.split('\t')
             if vals[0] == pid:
@@ -54,8 +54,8 @@ def _get_basic(pid):
     details_dict['gender'] = vals[2]
     return details_dict
 
-def _get_occupation(pid):
-    with open(os.path.join(PATH, OCCU), 'r') as f:
+def _get_occupation(pid, full_path=(PATH + OCCU)):
+    with open(full_path, 'r') as f:
         for line in f:
             vals = line.split('\t')
             if vals[0] == pid:

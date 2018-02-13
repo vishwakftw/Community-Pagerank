@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import networkx as nx
+from person import _get_basic
 from argparse import ArgumentParser as AP
 
 def _lines_in_file(file_path):
@@ -11,15 +12,12 @@ def _lines_in_file(file_path):
 
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
-# person_file_root replaces the presence of top_k_sort
-# Deliberate addition of this and not use of person.py due to performance issues.
 p.add_argument('--person_file_root', type=str, 
-                help='Root location of the person information incase person info required in final output')
+                help='Root location of the person information in case person info required in final output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
 p.add_argument('--verbose', action='store_true', help='option to print information at regular intervals')
 p.add_argument('--k', type=int, default=25, help='Top-K vals from PageRank')
-# p.add_argument('--top_k_sort', action='store_true', help='option to sort the Top K nodes based on PageRank value')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p = p.parse_args()
 
@@ -72,34 +70,25 @@ top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
 top_k_vals = pagerank_vals[top_k_indices]
 top_k_nodes = nodes[top_k_indices]
 
-# Get the persons info
-if p.person_file_root is not None:
-    with open(p.person_file_root, 'r') as person_file:
-        persons = {}
-        for line in person_file:
-            vals = line.split('\t')
-            vals[4] = vals[4][:-1]
-            persons[vals[0]] = vals[1:]
-
-# Print information to file
+# Print only person IDs to file
 with open('top-{}-nodes.txt'.format(p.k), 'w') as write_file:
     for n in top_k_nodes:
         write_file.write('{}\n'.format(n))
     if p.verbose:
         print("Top k information saved")
 
-if p.person_file_root is not None:  # Sort and print, if required
+# Print all information if the person information file path is given
+if p.person_file_root is not None:
     sort_index = np.argsort(top_k_vals)[::-1]
     with open('top-{}-nodes-sorted.txt'.format(p.k), 'w') as write_file:
         write_file.write('Person ID\tName\tGender\tBirth Year\tDeath Year\n')
         for n in top_k_nodes[sort_index]:
-            if n in persons.keys():
-                personal_info = persons[n]
-                write_file.write('{}\t{}\t{}\t{}\t{}\n'.format(n, personal_info[0],
-                                 personal_info[1], personal_info[2], personal_info[3]))
+            if n.find('WP_') != -1:
+                continue
             else:
-                # WP_1095706 currently prints out as a NA entry.
-                # Comment out if this entry is to be ignored
-                write_file.write('{}\tNA\tNA\tNA\tNA\n'.format(n))
+                personal_info = _get_basic(pid=n, full_path=p.person_file_root)
+                write_file.write('{}\t{}\t{}\t{}\t{}\n'.format(n, personal_info['name'],
+                                 personal_info['gender'], personal_info['birth'], personal_info['death']))
+
         if p.verbose:
             print("Top k information saved")
