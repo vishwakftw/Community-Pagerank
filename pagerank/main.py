@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import networkx as nx
 from argparse import ArgumentParser as AP
@@ -11,6 +12,7 @@ def _lines_in_file(file_path):
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
+p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
 p.add_argument('--verbose', action='store_true', help='option to print information at regular intervals')
 p.add_argument('--k', type=int, default=25, help='Top-K vals from PageRank')
 p.add_argument('--top_k_sort', action='store_true', help='option to sort the Top K nodes based on PageRank value')
@@ -18,22 +20,28 @@ p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
 
+filepath = p.file_root
+if p.shuffle:
+    os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4])
+    filepath = filepath[:-4] + '_shuf.txt'
+
 # Get graph information, graphs can be large hence creating in streaming fashion
 cur_graph = nx.Graph()
-edges_to_add = int(_lines_in_file(p.file_root) * p.fraction)
+edges_to_add = int(_lines_in_file(filepath) * p.fraction)
 print("Number of edges to add: {}".format(edges_to_add))
 
-with open(p.file_root, 'r') as graph_file:
+with open(filepath, 'r') as graph_file:
+    count = 0
     for line in graph_file:
         vals = line.split()
         cur_graph.add_edge(vals[1], vals[0], weight=float(vals[2]))
+        count += 1
 
         if p.verbose:
-            if cur_graph.size() % 100 == 0:
+            if count % 100 == 0:
                 print("Added {} edges".format(cur_graph.size()))
 
-        edges_to_add -= 1
-        if edges_to_add == 0:
+        if count == edges_to_add:
             break
 
 if p.verbose:
