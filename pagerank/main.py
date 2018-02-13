@@ -22,7 +22,7 @@ assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
 
 filepath = p.file_root
 if p.shuffle:
-    os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4])
+    os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4]))
     filepath = filepath[:-4] + '_shuf.txt'
 
 # Get graph information, graphs can be large hence creating in streaming fashion
@@ -47,7 +47,8 @@ with open(filepath, 'r') as graph_file:
 if p.verbose:
     print("Graph constructed")
 
-pagerank_result = nx.pagerank_numpy(cur_graph)  # run PageRank on the constructed undirected graph
+pagerank_result = nx.pagerank(cur_graph)  # run PageRank on the constructed undirected graph without NumPy
+
 pagerank_result = np.array(list(pagerank_result.items()))
 nodes, pagerank_vals = np.split(pagerank_result, 2, axis=1)
 nodes = nodes.reshape(-1)
@@ -68,7 +69,7 @@ with open('top-{}-nodes.txt'.format(p.k), 'w') as write_file:
 if p.top_k_sort:  # Sort and print, if required
     sort_index = np.argsort(top_k_vals)[::-1]
     with open('top-{}-nodes-sorted.txt'.format(p.k), 'w') as write_file:
-        for n in top_k_nodes:
+        for n in top_k_nodes[sort_index]:
             write_file.write('{}\n'.format(n))
         if p.verbose:
             print("Top k information saved")
