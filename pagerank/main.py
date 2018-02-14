@@ -16,7 +16,8 @@ p.add_argument('--person_file_root', type=str,
                 help='Root location of the person information in case person info required in final output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
-p.add_argument('--verbose', action='store_true', help='option to print information at regular intervals')
+p.add_argument('--verbose', action='store_true',
+                help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--k', type=int, default=25, help='Top-K vals from PageRank')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p = p.parse_args()
@@ -25,8 +26,9 @@ assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
 assert p.threshold >= 0 and p.threshold <= 1, "Threshold limits exceeded"
 
 threshold = p.threshold
-
 filepath = p.file_root
+verbose = p.verbose
+
 if p.shuffle:
     os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4]))
     filepath = filepath[:-4] + '_shuf.txt'
@@ -48,14 +50,14 @@ with open(filepath, 'r') as graph_file:
         cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
         count += 1
 
-        if p.verbose:
+        if verbose:
             if count % 100 == 0:
                 print("Added {} edges".format(cur_graph.size()))
 
         if count == edges_to_add:
             break
 
-if p.verbose:
+if verbose:
     print("Graph constructed")
 
 pagerank_result = nx.pagerank(cur_graph)  # run PageRank on the constructed undirected graph without NumPy
@@ -74,7 +76,7 @@ top_k_nodes = nodes[top_k_indices]
 with open('top-{}-nodes.txt'.format(p.k), 'w') as write_file:
     for n in top_k_nodes:
         write_file.write('{}\n'.format(n))
-    if p.verbose:
+    if verbose:
         print("Top k information saved")
 
 # Print all information if the person information file path is given
@@ -90,5 +92,5 @@ if p.person_file_root is not None:
                 write_file.write('{}\t{}\t{}\t{}\t{}\n'.format(n, personal_info['name'],
                                  personal_info['gender'], personal_info['birth'], personal_info['death']))
 
-        if p.verbose:
+        if verbose:
             print("Top k information saved")
