@@ -11,7 +11,7 @@ output = open(p.root[:-4] + '_thres.txt', 'w')
 
 with open(p.root, 'r') as origin:
     for line in origin:
-        vals = line.split('\t')
+        vals = line.split()
         edge_weight = float(vals[2])
         if edge_weight >= threshold:
             output.write('{}\t{}\t{}\n'.format(vals[0], vals[1], edge_weight))
