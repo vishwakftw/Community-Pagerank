@@ -1,12 +1,13 @@
 ### Community Detection using SLPA
 ----------------------------------
 
-+ We make use of the Java archive provided by the authors of the paper **Towards linear time overlapping community detection in social network** by Xie and Szymanski.
++ We make use of the Java archive provided by the authors of the paper **Towards linear time overlapping community detection in social network** by Xie and Szymanski. [Link](https://sites.google.com/site/communitydetectionslpa/)
 + The usage for the Wikipedia Social Network is 
 ```java
-java -jar SLPA.jar -i <network_file> -Onc 2 -r 0.01 -Sym 1 -seed <seed_number>
+java -jar SLPA.jar -i <network_file> -Onc 2 -r 0.01 -Sym 1 -seed <seed_number> -loopfactor <loop_factor>
 ```
 + The default seed value used is _1729_.
++ Considering the size of the network, we use `loop_factor` as suggested, and the default value is _0.2_.
 + The raw network file is used which can be found in this [link](http://dbs.ifi.uni-heidelberg.de/index.php?id=data).
 + Since graph pre-processing in abstracted away, the only way to perform threshold is externally. To obtain edge thresholded version of the graph, run
 ```
