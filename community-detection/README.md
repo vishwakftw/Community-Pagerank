@@ -4,7 +4,7 @@
 + We make use of the Java archive provided by the authors of the paper **Towards linear time overlapping community detection in social network** by Xie and Szymanski. [Link](https://sites.google.com/site/communitydetectionslpa/)
 + The usage for the Wikipedia Social Network is 
 ```java
-java -jar SLPA.jar -i <network_file> -Onc 2 -r 0.01 -Sym 1 -seed <seed_number> -loopfactor <loop_factor>
+java -Xmx<size>g -jar SLPA.jar -i <network_file> -Onc 2 -r 0.01 -Sym 1 -seed <seed_number> -loopfactor <loop_factor>
 ```
 + The default seed value used is _1729_.
 + Considering the size of the network, we use `loop_factor` as suggested, and the default value is _0.2_.
@@ -14,3 +14,4 @@ java -jar SLPA.jar -i <network_file> -Onc 2 -r 0.01 -Sym 1 -seed <seed_number> -
 python3 gen_threshold_graph.py --thres <thres_val> --root <network_file_root>
 ```
 + Dependencies for running the Java archive is resolved by `commons-collections-3.2.1.jar`. Please don't remove this file from the working directory when running.
++ Considering the size of the graph that this algorithm is run over, we increase the heap size using a JVM setting. The default value is 32 for our trials. Please check with your system specifications before running.
