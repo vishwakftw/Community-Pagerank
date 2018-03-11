@@ -14,7 +14,7 @@ def _lines_in_file(file_path):
 
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
-p.add_argument('--output_file_path', type=str, 
+p.add_argument('--output_file_path', type=str, default='./OUTPUTS',
                 help='File path for output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
@@ -73,11 +73,11 @@ for key in partition:
     else:
         partitionT[partition[key]].append(key)
         
-with open('../OUTPUTS/partition_multilabel.txt', 'w') as write_file:
+with open(os.path.join(p.output_file, 'partition_multilabel.txt'), 'w') as write_file:
     for key in partition:
         write_file.write('{}\t{}\n'.format(key, partition[key]))
         
-with open('../OUTPUTS/partitionT_multilabel.txt', 'w') as write_file:
+with open(os.path.join(p.output_file, 'partitionT_multilabel.txt'), 'w') as write_file:
     for key in partitionT:
         write_file.write('{}'.format(key))
         for persons in partitionT[key]:
@@ -86,4 +86,3 @@ with open('../OUTPUTS/partitionT_multilabel.txt', 'w') as write_file:
 
 if verbose:
     print("Number of communities formed: {}".format(len(partitionT)))
-
