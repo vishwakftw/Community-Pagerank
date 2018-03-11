@@ -108,3 +108,6 @@ venv.bak/
 
 # wiki data
 wikipedia_social_network/
+
+#output
+OUTPUTS/
