@@ -44,10 +44,10 @@ with open(filepath, 'r') as graph_file:
     for line in graph_file:
         vals = line.split()
         edge_weight = float(vals[2])
-        
+
         if edge_weight < threshold:
             continue
-            
+
         cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
         count += 1
 
@@ -72,11 +72,11 @@ for key in partition:
         partitionT[partition[key]] = [key]
     else:
         partitionT[partition[key]].append(key)
-        
+
 with open(os.path.join(p.output_file, 'partition_multilabel.txt'), 'w') as write_file:
     for key in partition:
         write_file.write('{}\t{}\n'.format(key, partition[key]))
-        
+
 with open(os.path.join(p.output_file, 'partitionT_multilabel.txt'), 'w') as write_file:
     for key in partitionT:
         write_file.write('{}'.format(key))
