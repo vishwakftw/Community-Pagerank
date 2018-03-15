@@ -1,8 +1,8 @@
 from __future__ import print_function
 from __future__ import division
 import os
-import slpa
 import numpy as np
+import community as c
 import networkx as nx
 from argparse import ArgumentParser as AP
 
@@ -14,21 +14,17 @@ def _lines_in_file(file_path):
 
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
-p.add_argument('--output_file_path', type=str, default='../../OUTPUTS',
-                help='File path for output')
+p.add_argument('--output_file_path', type=str, default='./OUTPUTS', help='File path for output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
 p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
-p.add_argument('--iterations', type=int, default=100, help='number of iterations to propagate for')
-p.add_argument('--prob', type=float, default=0.01, help='The probability for soft-clustering')
-p.add_argument('--log_interval', type=int, default=100000, help='number of edges after which log for verbose')
+p.add_argument('--k', type=int, default=5, help='value for number of top people')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
 assert p.threshold >= 0 and p.threshold <= 1, "Threshold limits exceeded"
-assert p.prob > 0 and p.prob < 1, "Probability limits exceeded"
 
 threshold = p.threshold
 filepath = p.file_root
@@ -56,7 +52,7 @@ with open(filepath, 'r') as graph_file:
         count += 1
 
         if verbose:
-            if count % p.log_interval == 0:
+            if count % 100 == 0:
                 print("Added {} edges".format(cur_graph.size()))
 
         if count == edges_to_add:
@@ -65,13 +61,44 @@ with open(filepath, 'r') as graph_file:
 if verbose:
     print("Graph constructed")
 
-community = slpa.slpa(cur_graph, p.iterations, p.prob)
+partition = c.best_partition(cur_graph)
 
 if verbose:
-    print("Final graph has {} communities".format(len(community)))
-    
-with open(os.path.join(p.output_file_path, 'community_slpa.txt'), 'w') as write_file:
-    for i, key in enumerate(community):
-        for v in community[key]:        
-            write_file.write('{}\t'.format(v))
-        write_file.write('\n')
+    print("Final graph has {} vertices".format(len(partition)))
+
+# Transpose this result
+partitionT = {}
+for key in partition:
+    if partition[key] not in partitionT.keys():
+        partitionT[partition[key]] = {key}
+    else:
+        partitionT[partition[key]].add(key)
+
+# Construct community graphs
+comm_graphs = []
+for n_g in partitionT.keys():
+    new_graph = nx.Graph()
+    comm_node_list = sorted(list(partitionT[n_g]))
+    for i in range(0, len(comm_node_list)):
+        for j in range(i + 1, len(comm_node_list)):
+            U = comm_node_list[i]
+            V = comm_node_list[j]
+            try:
+                new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
+            except KeyError:
+                continue
+
+    comm_graphs.append(new_graph)
+
+for G in comm_graphs:
+    pagerank_result = nx.pagerank(G)  # run PageRank on the constructed undirected graph without NumPy
+
+    pagerank_result = np.array(list(pagerank_result.items()))
+    nodes, pagerank_vals = np.split(pagerank_result, 2, axis=1)
+    nodes = nodes.reshape(-1)
+    pagerank_vals = np.array(pagerank_vals, dtype=float).reshape(-1)
+
+    # Get top-k values
+    top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
+    top_k_vals = pagerank_vals[top_k_indices]
+    top_k_nodes = nodes[top_k_indices]
