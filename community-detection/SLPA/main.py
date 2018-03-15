@@ -14,7 +14,7 @@ def _lines_in_file(file_path):
 
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
-p.add_argument('--output_file_path', type=str, default='./OUTPUTS',
+p.add_argument('--output_file_path', type=str, default='../../OUTPUTS',
                 help='File path for output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
@@ -23,6 +23,7 @@ p.add_argument('--verbose', action='store_true',
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--iterations', type=int, default=100, help='number of iterations to propagate for')
 p.add_argument('--prob', type=float, default=0.01, help='The probability for soft-clustering')
+p.add_argument('--log_interval', type=int, default=100000, help='number of edges after which log for verbose')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
@@ -55,7 +56,7 @@ with open(filepath, 'r') as graph_file:
         count += 1
 
         if verbose:
-            if count % 100 == 0:
+            if count % p.log_interval == 0:
                 print("Added {} edges".format(cur_graph.size()))
 
         if count == edges_to_add:
@@ -64,25 +65,13 @@ with open(filepath, 'r') as graph_file:
 if verbose:
     print("Graph constructed")
 
-community = list(slpa.slpa(cur_graph, p.iterations, p.prob))
+community = slpa.slpa(cur_graph, p.iterations, p.prob)
 
 if verbose:
     print("Final graph has {} communities".format(len(community)))
-
-communityT = {}
-for i, set_v in enumerate(community):
-    communityT[i] = []
-    for v in set_v:
-        communityT[i].append(v)
-
+    
 with open(os.path.join(p.output_file_path, 'community_slpa.txt'), 'w') as write_file:
-    for i, sets in enumerate(community):
-        for v in sets:        
-            write_file.write('{}\t{}\n'.format(v, i))
-
-with open(os.path.join(p.output_file_path, 'communityT_slpa.txt'), 'w') as write_file:
-    for key in communityT.keys():
-        write_file.write('{}'.format(key))
-        for persons in communityT[key]:
-            write_file.write('\t{}'.format(persons))
+    for i, key in enumerate(community):
+        for v in community[key]:        
+            write_file.write('{}\t'.format(v))
         write_file.write('\n')
