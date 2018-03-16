@@ -90,7 +90,7 @@ for n_g in partitionT.keys():
 
     comm_graphs.append(new_graph)
 
-for G in comm_graphs:
+for i, G in enumerate(comm_graphs):
     pagerank_result = nx.pagerank(G)  # run PageRank on the constructed undirected graph without NumPy
 
     pagerank_result = np.array(list(pagerank_result.items()))
@@ -99,6 +99,18 @@ for G in comm_graphs:
     pagerank_vals = np.array(pagerank_vals, dtype=float).reshape(-1)
 
     # Get top-k values
-    top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
+    if len(nodes) <= p.k:
+        top_k_indices = np.arange(0, len(nodes))
+    else:
+        top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
     top_k_vals = pagerank_vals[top_k_indices]
     top_k_nodes = nodes[top_k_indices]
+
+    # Print only person IDs to file
+    with open('top-{}-nodes-per-community.txt'.format(p.k), 'a') as write_file:
+        write_file.write('{}'.format(i))
+        for n in top_k_nodes:
+            write_file.write('\t{}'.format(n))
+        write_file.write('\n')
+        if verbose:
+            print("Top k information saved for community {}".format(i))
