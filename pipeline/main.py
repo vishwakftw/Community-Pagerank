@@ -14,7 +14,6 @@ def _lines_in_file(file_path):
 
 p = AP()
 p.add_argument('--file_root', required=True, type=str, help='Root location of the graph information')
-p.add_argument('--output_file_path', type=str, default='./OUTPUTS', help='File path for output')
 p.add_argument('--fraction', type=float, default=1, help='option to consider only a fraction of edges')
 p.add_argument('--shuffle', action='store_true', help='shuffle the graph data in the file')
 p.add_argument('--verbose', action='store_true',
@@ -79,6 +78,13 @@ comm_graphs = []
 for n_g in partitionT.keys():
     new_graph = nx.Graph()
     comm_node_list = sorted(list(partitionT[n_g]))
+
+    with open('community-people-table.txt', 'a') as c_f:
+        c_f.write('{}'.format(n_g))
+        for node in comm_node_list:
+            c_f.write('\t{}'.format(node))
+        c_f.write('\n')
+
     for i in range(0, len(comm_node_list)):
         for j in range(i + 1, len(comm_node_list)):
             U = comm_node_list[i]
