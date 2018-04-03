@@ -111,3 +111,7 @@ wikipedia_social_network/
 
 #output
 OUTPUTS/
+
+#data_clean_up
+raw_data/
+clean_data/
