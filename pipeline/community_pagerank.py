@@ -20,6 +20,9 @@ p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--k', type=int, default=5, help='value for number of top people')
+p.add_argument('--min_comm_size', type=int, default=10, help='Minimum community size to consider for PageRank')
+p.add_argument('--comm_src', type=str, default=None,
+               help='Source for community information stored as <comm_id> [\\t person_id]+')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
@@ -33,45 +36,61 @@ if p.shuffle:
     os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4]))
     filepath = filepath[:-4] + '_shuf.txt'
 
-# Get graph information, graphs can be large hence creating in streaming fashion
-cur_graph = nx.Graph()
-edges_to_add = int(_lines_in_file(filepath) * p.fraction)
-print("Number of edges to add: {}".format(edges_to_add))
+if p.comm_src is None:
+    # Get graph information, graphs can be large hence creating in streaming fashion
+    cur_graph = nx.Graph()
+    edges_to_add = int(_lines_in_file(filepath) * p.fraction)
+    print("Number of edges to add: {}".format(edges_to_add))
 
-with open(filepath, 'r') as graph_file:
-    count = 0
-    for line in graph_file:
-        vals = line.split()
-        edge_weight = float(vals[2])
+    with open(filepath, 'r') as graph_file:
+        count = 0
+        for line in graph_file:
+            vals = line.split()
+            edge_weight = float(vals[2])
 
-        if edge_weight < threshold:
-            continue
+            if edge_weight < threshold:
+                continue
 
-        cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
-        count += 1
+            cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
+            count += 1
 
-        if verbose:
-            if count % 100 == 0:
-                print("Added {} edges".format(cur_graph.size()))
+            if verbose:
+                if count % 100 == 0:
+                    print("Added {} edges".format(cur_graph.size()))
 
-        if count == edges_to_add:
-            break
+            if count == edges_to_add:
+                break
 
-if verbose:
-    print("Graph constructed")
+    if verbose:
+        print("Graph constructed")
 
-partition = c.best_partition(cur_graph)
+    partition = c.best_partition(cur_graph)
 
-if verbose:
-    print("Final graph has {} vertices".format(len(partition)))
+    if verbose:
+        print("Final graph has {} vertices".format(len(partition)))
 
-# Transpose this result
-partitionT = {}
-for key in partition:
-    if partition[key] not in partitionT.keys():
-        partitionT[partition[key]] = {key}
-    else:
-        partitionT[partition[key]].add(key)
+    # Transpose this result
+    partitionT = {}
+    for key in partition:
+        if partition[key] not in partitionT.keys():
+            partitionT[partition[key]] = {key}
+        else:
+            partitionT[partition[key]].add(key)
+
+else:
+    print("Community detection already completed")
+    partitionT = {}
+    with open(p.comm_src, 'r') as cs:
+        for line in cs:
+            vals = line.split('\t')
+            vals[-1] = vals[-1][:-1]  # Remove the newline character in the end
+            partitionT[vals[0]] = set(vals[1:])
+
+    edges_set = {}
+    with open(p.file_root, 'r') as edge_file:
+        for line in edge_file:
+            vals = line.split()
+            edges_set[(vals[0], vals[1])] = float(vals[2])
 
 # Construct community graphs
 comm_graphs = []
@@ -79,7 +98,12 @@ for n_g in partitionT.keys():
     new_graph = nx.Graph()
     comm_node_list = sorted(list(partitionT[n_g]))
 
-    with open('community-people-table.txt', 'a') as c_f:
+    if len(comm_node_list) < p.min_comm_size:
+        if verbose:
+            print("Skipping community {} with size = {}".format(n_g, len(comm_node_list)))
+        continue
+
+    with open('community-people-table-min_size={}.txt'.format(p.min_comm_size), 'a') as c_f:
         c_f.write('{}'.format(n_g))
         for node in comm_node_list:
             c_f.write('\t{}'.format(node))
@@ -89,10 +113,17 @@ for n_g in partitionT.keys():
         for j in range(i + 1, len(comm_node_list)):
             U = comm_node_list[i]
             V = comm_node_list[j]
-            try:
-                new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
-            except KeyError:
-                continue
+            if p.comm_src is None:
+                try:
+                    new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
+                except KeyError:
+                    continue
+            else:
+                try:
+                    new_graph.add_edge(U, V, weight=edges_set[(U, V)])
+                    edges_set.pop((U, V))  # An edge occurs only once due to hard assignment
+                except KeyError:
+                    pass
 
     comm_graphs.append(new_graph)
 

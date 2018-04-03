@@ -16,7 +16,6 @@ Processing:
     Removal of stop words
     Stemming
 """
-
 from __future__ import print_function
 from __future__ import division
 import os
@@ -33,8 +32,6 @@ p.add_argument('--clean_data_root', type=str, default='./clean_data',
 p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p = p.parse_args()
-
-verbose = p.verbose
 
 porter = PorterStemmer()
 stop_words = set(stopwords.words('english'))
@@ -55,42 +52,15 @@ for community in os.listdir(p.dir_root):
                 f.close()
                 
                 tokens = word_tokenize(text)
-                # convert to lower case
-                tokens = [w.lower() for w in tokens]
-                
-                # remove punctuation from each word
-                table = str.maketrans('', '', string.punctuation)
+                tokens = [w.lower() for w in tokens]  # convert to lower case
+                table = str.maketrans('', '', string.punctuation)  # remove punctuation from each word
                 stripped = [w.translate(table) for w in tokens]
-                
-                words = [w for w in stripped if not w in stop_words]
-                
-                stemmed = [porter.stem(word) for word in words]
-                
-                cleaned = [w for w in stemmed if w is not '']
+                words = [w for w in stripped if not w in stop_words]  # remove stop words
+                stemmed = [porter.stem(word) for word in words]  # word stemming
+                cleaned = [w for w in stemmed if w is not '']  # remove blank words
                 
                 cleaned_file_path = os.path.join(new_dir, person)
                 f = open(cleaned_file_path, 'wt')
                 for w in cleaned:
-                    f.write(w+" ")
+                    f.write(w + " ")
                 f.close()
-                
-                #print(cleaned)
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
