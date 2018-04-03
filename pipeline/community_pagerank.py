@@ -20,6 +20,7 @@ p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--k', type=int, default=5, help='value for number of top people')
+p.add_argument('--min_comm_size', type=int, default=10, help='Minimum community size to consider for PageRank')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
@@ -79,7 +80,10 @@ for n_g in partitionT.keys():
     new_graph = nx.Graph()
     comm_node_list = sorted(list(partitionT[n_g]))
 
-    with open('community-people-table.txt', 'a') as c_f:
+    if len(comm_node_list) < p.min_comm_size:
+        continue
+
+    with open('community-people-table-min_size={}.txt'.format(p.min_comm_size), 'a') as c_f:
         c_f.write('{}'.format(n_g))
         for node in comm_node_list:
             c_f.write('\t{}'.format(node))
