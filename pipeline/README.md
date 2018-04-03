@@ -14,9 +14,9 @@
 + For `community_pagerank.py`, the options are:
 ```
 python community_pagerank.py [-h] --file_root FILE_ROOT [--fraction FRACTION]
-                              [--shuffle] [--verbose] [--threshold THRESHOLD]
-                              [--k K] [--min_comm_size MIN_COMM_SIZE]
-                              [--comm_src COMM_SRC]
+                             [--shuffle] [--verbose] [--threshold THRESHOLD]
+                             [--k K] [--min_comm_size MIN_COMM_SIZE]
+                             [--comm_src COMM_SRC]
 ```
 + For `page_data.py`, the options are:
 ```

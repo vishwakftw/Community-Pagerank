@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import division
 import os
 import numpy as np
-import pandas as pd
 import community as c
 import networkx as nx
 from argparse import ArgumentParser as AP
@@ -84,10 +83,14 @@ else:
     with open(p.comm_src, 'r') as cs:
         for line in cs:
             vals = line.split('\t')
-            vals[-1] = vals[-1][:-1]
+            vals[-1] = vals[-1][:-1]  # Remove the newline character in the end
             partitionT[vals[0]] = set(vals[1:])
 
-    edges_db = pd.read_csv(p.file_root, sep='\t', low_memory=False, header=None, names=['U', 'V', 'weight'])
+    edges_set = {}
+    with open(p.file_root, 'r') as edge_file:
+        for line in edge_file:
+            vals = line.split()
+            edges_set[(vals[0], vals[1])] = float(vals[2])
 
 # Construct community graphs
 comm_graphs = []
@@ -96,6 +99,8 @@ for n_g in partitionT.keys():
     comm_node_list = sorted(list(partitionT[n_g]))
 
     if len(comm_node_list) < p.min_comm_size:
+        if verbose:
+            print("Skipping community {} with size = {}".format(n_g, len(comm_node_list)))
         continue
 
     with open('community-people-table-min_size={}.txt'.format(p.min_comm_size), 'a') as c_f:
@@ -114,10 +119,11 @@ for n_g in partitionT.keys():
                 except KeyError:
                     continue
             else:
-                result = edges_db.loc[(edges_db['U'] == U) & (edges_db['V'] == V), 'weight'].values
-                if len(result) == 0:
-                    continue
-                new_graph.add_edge(U, V, weight=result[0])
+                try:
+                    new_graph.add_edge(U, V, weight=edges_set[(U, V)])
+                    edges_set.pop((U, V))  # An edge occurs only once due to hard assignment
+                except KeyError:
+                    pass
 
     comm_graphs.append(new_graph)
 
