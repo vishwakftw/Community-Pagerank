@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 import os
 import numpy as np
+import pandas as pd
 import community as c
 import networkx as nx
 from argparse import ArgumentParser as AP
@@ -21,6 +22,8 @@ p.add_argument('--verbose', action='store_true',
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--k', type=int, default=5, help='value for number of top people')
 p.add_argument('--min_comm_size', type=int, default=10, help='Minimum community size to consider for PageRank')
+p.add_argument('--comm_src', type=str, default=None,
+               help='Source for community information stored as <comm_id> [\\t person_id]+')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
@@ -34,45 +37,56 @@ if p.shuffle:
     os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4]))
     filepath = filepath[:-4] + '_shuf.txt'
 
-# Get graph information, graphs can be large hence creating in streaming fashion
-cur_graph = nx.Graph()
-edges_to_add = int(_lines_in_file(filepath) * p.fraction)
-print("Number of edges to add: {}".format(edges_to_add))
+if p.comm_src is None:
+    # Get graph information, graphs can be large hence creating in streaming fashion
+    cur_graph = nx.Graph()
+    edges_to_add = int(_lines_in_file(filepath) * p.fraction)
+    print("Number of edges to add: {}".format(edges_to_add))
 
-with open(filepath, 'r') as graph_file:
-    count = 0
-    for line in graph_file:
-        vals = line.split()
-        edge_weight = float(vals[2])
+    with open(filepath, 'r') as graph_file:
+        count = 0
+        for line in graph_file:
+            vals = line.split()
+            edge_weight = float(vals[2])
 
-        if edge_weight < threshold:
-            continue
+            if edge_weight < threshold:
+                continue
 
-        cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
-        count += 1
+            cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
+            count += 1
 
-        if verbose:
-            if count % 100 == 0:
-                print("Added {} edges".format(cur_graph.size()))
+            if verbose:
+                if count % 100 == 0:
+                    print("Added {} edges".format(cur_graph.size()))
 
-        if count == edges_to_add:
-            break
+            if count == edges_to_add:
+                break
 
-if verbose:
-    print("Graph constructed")
+    if verbose:
+        print("Graph constructed")
 
-partition = c.best_partition(cur_graph)
+    partition = c.best_partition(cur_graph)
 
-if verbose:
-    print("Final graph has {} vertices".format(len(partition)))
+    if verbose:
+        print("Final graph has {} vertices".format(len(partition)))
 
-# Transpose this result
-partitionT = {}
-for key in partition:
-    if partition[key] not in partitionT.keys():
-        partitionT[partition[key]] = {key}
-    else:
-        partitionT[partition[key]].add(key)
+    # Transpose this result
+    partitionT = {}
+    for key in partition:
+        if partition[key] not in partitionT.keys():
+            partitionT[partition[key]] = {key}
+        else:
+            partitionT[partition[key]].add(key)
+
+else:
+    print("Community detection already completed")
+    partitionT = {}
+    with open(p.comm_src, 'r') as cs:
+        for line in cs:
+            vals = line.split('\t')
+            partitionT[vals[0]] = set(vals[1:])
+
+    edges_db = pd.read_csv(p.file_root, sep='\t', low_memory=False, header=None, names=['U', 'V', 'weight'])
 
 # Construct community graphs
 comm_graphs = []
@@ -93,10 +107,17 @@ for n_g in partitionT.keys():
         for j in range(i + 1, len(comm_node_list)):
             U = comm_node_list[i]
             V = comm_node_list[j]
-            try:
-                new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
-            except KeyError:
-                continue
+            if p.comm_src is None:
+                try:
+                    new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
+                except KeyError:
+                    continue
+            else:
+                print(edges_db)
+                result = edges_db.loc[(edges_db['U'] == U) & (edges_db['V'] == V), 'weight'].values
+                if len(result) == 0:
+                    continue
+                new_graph.add_edge(U, V, weight=cur_graph[U][V][result[0]])
 
     comm_graphs.append(new_graph)
 
