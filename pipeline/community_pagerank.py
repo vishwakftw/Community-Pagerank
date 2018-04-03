@@ -84,6 +84,7 @@ else:
     with open(p.comm_src, 'r') as cs:
         for line in cs:
             vals = line.split('\t')
+            vals[-1] = vals[-1][:-1]
             partitionT[vals[0]] = set(vals[1:])
 
     edges_db = pd.read_csv(p.file_root, sep='\t', low_memory=False, header=None, names=['U', 'V', 'weight'])
@@ -113,11 +114,10 @@ for n_g in partitionT.keys():
                 except KeyError:
                     continue
             else:
-                print(edges_db)
                 result = edges_db.loc[(edges_db['U'] == U) & (edges_db['V'] == V), 'weight'].values
                 if len(result) == 0:
                     continue
-                new_graph.add_edge(U, V, weight=cur_graph[U][V][result[0]])
+                new_graph.add_edge(U, V, weight=result[0])
 
     comm_graphs.append(new_graph)
 
