@@ -20,11 +20,10 @@ def _get_basic(pid, full_path):
 p = AP()
 p.add_argument('--root', type=str, default='./', help='Specify root location for storing data')
 p.add_argument('--communities', type=str, required=True,
-                                help='Specify location for community data. Expected structure:\
-                                      <comm_id> \\t [person_id]+')
+               help='Specify location for community data. Expected structure: <comm_id> \\t [person_id]+')
 p.add_argument('--basic_info', type=str, default='./wsn_person-name-gender-birth-death.txt',
-                                         help='File for obtaining the basic information')
-p.parse_args()
+               help='File for obtaining the basic information')
+p = p.parse_args()
 
 basic_info = p.basic_info
 
@@ -40,12 +39,25 @@ with open(p.communities, 'r') as all_comms:
         if not os.path.exists(community_path):
             os.mkdir(community_path)
         personids = community.split('\t')[1:]
+        personids[-1] = personids[-1][:-1]
+        print(personids)
+        dis_probs = []
         for pid in personids:
             details_dict = _get_basic(pid, basic_info)
             name = details_dict['name']
+            birth = details_dict['birth']
             if pid.find('WP') != -1:
                 continue
             person_pagetext = os.path.join(community_path, '{}.txt'.format(pid))
-            with open(person_pagetext, 'w') as pp:
+            try:
                 person_page = wikipedia.page(name)
-                pp.write(person_page.content)
+                if person_page.title == name:
+                    with open(person_pagetext, 'w') as pp:
+                        pp.write(person_page.content)
+                else:
+                    dis_probs.append(pid)
+            except wikipedia.exceptions.DisambiguationError as E:
+                dis_probs.append(pid)
+        disambiguation_issues = open(os.path.join(community_path, 'disambiguation_problems.txt'), 'w')
+        disambiguation_issues.write('\n'.join(dis_probs))
+        disambiguation_issues.close()
