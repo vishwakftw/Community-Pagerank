@@ -17,15 +17,28 @@ def _get_basic(pid, full_path):
     details_dict['gender'] = vals[2]
     return details_dict
 
+def _get_categories(pid, full_path):
+    categories = []
+    with open(full_path, 'r') as f:
+        for line in f:
+            people = line.split('\t')
+            people = people[:-1]
+            if pid in people:
+                categories.append(people[1])
+    return categories
+
 p = AP()
 p.add_argument('--root', type=str, default='./', help='Specify root location for storing data')
 p.add_argument('--communities', type=str, required=True,
                help='Specify location for community data. Expected structure: <comm_id> \\t [person_id]+')
 p.add_argument('--basic_info', type=str, default='./wsn_person-name-gender-birth-death.txt',
                help='File for obtaining the basic information')
+p.add_argument('--category_info', type=str, default='./wsn_category-person.txt',
+               help='File for obtaining the categories')
 p = p.parse_args()
 
 basic_info = p.basic_info
+category_info = p.category_info
 
 new_dir = os.path.join(p.root, './raw_data')
 if not os.path.exists(new_dir):
@@ -45,7 +58,6 @@ with open(p.communities, 'r') as all_comms:
         for pid in personids:
             details_dict = _get_basic(pid, basic_info)
             name = details_dict['name']
-            birth = details_dict['birth']
             if pid.find('WP') != -1:
                 continue
             person_pagetext = os.path.join(community_path, '{}.txt'.format(pid))
@@ -55,9 +67,29 @@ with open(p.communities, 'r') as all_comms:
                     with open(person_pagetext, 'w') as pp:
                         pp.write(person_page.content)
                 else:
-                    dis_probs.append(pid)
+                    dis_probs.append((pid, name))
             except wikipedia.exceptions.DisambiguationError as E:
-                dis_probs.append(pid)
-        disambiguation_issues = open(os.path.join(community_path, 'disambiguation_problems.txt'), 'w')
-        disambiguation_issues.write('\n'.join(dis_probs))
-        disambiguation_issues.close()
+                dis_probs.append((pid, name))
+
+        for pid, name in dis_probs:
+            details_dict = _get_basic(pid, basic_info)
+            categories = _get_categories(pid, category_info)
+            candidates = wikipedia.search(name)
+            candidates = [c for c in candidates if c.find(name) != -1]
+            best_intersection = 0
+            index = -1
+            for i, c in enumerate(candidates):
+                try:
+                    cur_page = wikipedia.page(c)
+                    # Extract categories and check the intersection
+                    length_of_intersect = len(set(cur_page.categories) & set(categories))
+                    if best_intersection < length_of_intersect:
+                        best_intersection = length_of_intersect
+                        index = i
+                except:
+                    pass
+
+            if index != -1:
+                person_pagetext = os.path.join(community_path, '{}.txt'.format(pid))
+                with open(person_pagetext, 'w') as pp:
+                    pp.write(wikipedia.page(candidates[index]).content)
