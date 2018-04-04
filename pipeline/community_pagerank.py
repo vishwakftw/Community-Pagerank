@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 import os
 import numpy as np
+import pandas as pd
 import community as c
 import networkx as nx
 from argparse import ArgumentParser as AP
@@ -151,3 +152,13 @@ for i, G in enumerate(comm_graphs):
         write_file.write('\n')
         if verbose:
             print("Top k information saved for community {}".format(i))
+
+    with open('remaining-nodes-per-community.txt', 'a') as write_file:
+        write_file.write('{}'.format(i))
+        remaining_indices = set(range(len(nodes))) - set(top_k_indices.tolist())
+        remaining_nodes = nodes[remaining_indices]
+        for n in remaining_nodes:
+            write_file.write('\t{}'.format(n))
+        write_file.write('\n')
+        if verbose:
+            print("Remaining nodes saved for community {}".format(i))
