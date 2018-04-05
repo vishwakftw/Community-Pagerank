@@ -1,9 +1,9 @@
 """ Expected directory strucutre:
     raw_data/
-        community1/
+        community0/
             person1.txt (any file name is fine)
             person2.txt
-        community2/
+        community1/
             person3.txt
             ...
         ...
@@ -27,7 +27,7 @@ from argparse import ArgumentParser as AP
 
 p = AP()
 p.add_argument('--dir_root', type=str, default='./raw_data', help='Root location of the raw data')
-p.add_argument('--clean_data_root', type=str, default='./clean_data',
+p.add_argument('--clean_data', type=str, default='./clean_data',
                 help='Dir path for output')
 p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
@@ -35,6 +35,7 @@ p = p.parse_args()
 
 porter = PorterStemmer()
 stop_words = set(stopwords.words('english'))
+verbose = p.verbose
 
 for community in os.listdir(p.dir_root):
     print("Processing directory: " + community)
@@ -44,7 +45,8 @@ for community in os.listdir(p.dir_root):
         if not os.path.exists(new_dir):
             os.mkdir(new_dir, mode=0o755)
         for person in os.listdir(community_path):
-            print("\rProcessing file: " + person)
+            if verbose:
+                print("\rProcessing file:", person, end='')            
             file_path = os.path.join(community_path, person)
             if os.path.isfile(file_path):
                 f = open(file_path, 'rt')
@@ -64,3 +66,5 @@ for community in os.listdir(p.dir_root):
                 for w in cleaned:
                     f.write(w + " ")
                 f.close()
+        if verbose:
+            print('')
