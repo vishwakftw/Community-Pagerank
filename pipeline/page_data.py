@@ -44,15 +44,14 @@ new_dir = os.path.join(p.root, './raw_data')
 if not os.path.exists(new_dir):
     os.mkdir(new_dir, mode=0o755)
 
-c_id = 0
 with open(p.communities, 'r') as all_comms:
     for community in all_comms:
-        c_id += 1
-        community_path = os.path.join(new_dir, 'community{}'.format(c_id))
+        ids = community.split('\t')
+        personids = ids[1:]
+        personids[-1] = personids[-1][:-1]
+        community_path = os.path.join(new_dir, 'community{}'.format(ids[0]))
         if not os.path.exists(community_path):
             os.mkdir(community_path)
-        personids = community.split('\t')[1:]
-        personids[-1] = personids[-1][:-1]
         print(personids)
         dis_probs = []
         for pid in personids:
@@ -68,7 +67,7 @@ with open(p.communities, 'r') as all_comms:
                         pp.write(person_page.content)
                 else:
                     dis_probs.append((pid, name))
-            except wikipedia.exceptions.DisambiguationError as E:
+            except:
                 dis_probs.append((pid, name))
 
         for pid, name in dis_probs:
