@@ -58,4 +58,3 @@ with open(os.path.join(p.output_file_path, 'communities_T.tsv'), 'w') as write_f
         for communities in transpose[key]:
             write_file.write('\t{}'.format(communities))
         write_file.write('\n')
-

@@ -35,6 +35,8 @@ p.add_argument('--basic_info', type=str, default='./wsn_person-name-gender-birth
                help='File for obtaining the basic information')
 p.add_argument('--category_info', type=str, default='./wsn_category-person.txt',
                help='File for obtaining the categories')
+p.add_argument('--max_files_per_comm', type=int, default=-1,
+               help='Maximum files to extract per community. -1 for all')
 p = p.parse_args()
 
 basic_info = p.basic_info
@@ -54,21 +56,39 @@ with open(p.communities, 'r') as all_comms:
             os.mkdir(community_path)
         print(personids)
         dis_probs = []
+
+        if p.max_files_per_comm == -1:
+            number_required = len(personids)
+        else:
+            number_required = p.max_files_per_comm
+        flag = False
+
         for pid in personids:
             details_dict = _get_basic(pid, basic_info)
             name = details_dict['name']
             if pid.find('WP') != -1:
                 continue
             person_pagetext = os.path.join(community_path, '{}.txt'.format(pid))
+            if os.path.exists(person_pagetext):
+                number_required -= 1
+                continue
             try:
                 person_page = wikipedia.page(name)
                 if person_page.title == name:
                     with open(person_pagetext, 'w') as pp:
                         pp.write(person_page.content)
+                    number_required -= 1
                 else:
                     dis_probs.append((pid, name))
             except:
                 dis_probs.append((pid, name))
+
+            if number_required == 0:
+                flag = True
+                break
+
+        if flag:
+            continue
 
         for pid, name in dis_probs:
             details_dict = _get_basic(pid, basic_info)
@@ -92,3 +112,7 @@ with open(p.communities, 'r') as all_comms:
                 person_pagetext = os.path.join(community_path, '{}.txt'.format(pid))
                 with open(person_pagetext, 'w') as pp:
                     pp.write(wikipedia.page(candidates[index]).content)
+                number_required -= 1
+
+            if number_required == 0:
+                break

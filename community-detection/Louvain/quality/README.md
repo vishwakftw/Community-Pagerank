@@ -1,9 +1,17 @@
-Here we compute the quality of the communities created.
+#### How good are my communities?
+---------------------------------
 
-First we take the transpose of the wikipedia's edges, for easier computation later.
-Command - python3 transpose.py --file_root=path/wsn_category-person.txt
-
-After obtaining transpose to obtain the metrics
-Command - python3 metrics.py --communities_file=path/OUTPUTS/partitionT_multilabel.txt --categoriesT_file=path/OUTPUTS/category_T.tsv --categories_file=path/wikipedia_social_network/wsn_category-person.txt [--natural]
-where category_T.csv is the transpose of wikipedia categories created by the previous command
-and partitionT_multilabel is the transpose of partition obtained by Louvain's algorithm.
++ Here we compute the quality of the communities created.
++ First we take the transpose of the Wikipedia graph's edges, for easier computation later. The script that implements this transpose is `transpose.py`. Options for executing this script:
+```
+python transpose.py [-h] --file_root FILE_ROOT
+                    [--output_file_path OUTPUT_FILE_PATH]
+                    [--num_comm NUM_COMM] [--verbose]
+```
++ After obtaining the "transposed" graph, we can compute the metrics. Metrics computable are **F1-Score**, **Recall** and **Precision**. The script for this purpose is `metrics.py`. Options for executing this script:
+```
+python metrics.py [-h] --communities_file COMMUNITIES_FILE --categoriesT_file
+                  CATEGORIEST_FILE --categories_file CATEGORIES_FILE
+                  [--output_file_path OUTPUT_FILE_PATH] [--num_comm NUM_COMM]
+                  [--verbose] [--natural]
+```
