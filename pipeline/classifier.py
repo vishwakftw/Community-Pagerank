@@ -1,14 +1,19 @@
 """ 
 Input:
 * trainset.txt:
-    <IDofPerson1ofcommunity1> <IDofPerson2ofcommunity1> ..
-    <IDofPerson1ofcommunity2> <IDofPerson2ofcommunity2> ..
+    0 <IDofPerson1ofcommunity0> <IDofPerson2ofcommunity0> ..
+    1 <IDofPerson1ofcommunity1> <IDofPerson2ofcommunity1> ..
     ...
 * testset.txt (Assuming 45 people go to trainset per community)
-    <IDofPerson46ofcommunity1> <IDofPerson47ofcommunity1> ..
-    <IDofPerson46ofcommunity2> <IDofPerson47ofcommunity2> ..
+    0 <IDofPerson46ofcommunity0> <IDofPerson47ofcommunity0> ..
+    1 <IDofPerson46ofcommunity1> <IDofPerson47ofcommunity1> ..
     ...
 path of clean data
+
+Note: The order of cmmunities in trainset / testset does not matter,
+ie. first line can be : 25 ID1.txt ID2.txt etc. but it numbering of
+communites must follow the order 0, 1, .. n, where (n+1 would be
+the number of lines in file)
 
 Output:
 Accuracy on test set
@@ -20,8 +25,16 @@ import os
 import string
 from argparse import ArgumentParser as AP
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import mutual_info_classif
 import numpy as np
 
+def _lines_in_file(file_path):
+    with open(file_path, 'r') as f:
+        for i, _ in enumerate(f):
+            pass
+    return i + 1
+    
 p = AP()
 p.add_argument('--clean_data_root', type=str, default='./clean_data',
                 help='Dir path for output')
@@ -29,7 +42,7 @@ p.add_argument('--train', type=str, default='./trainset.txt',
                 help='Trainset file')
 p.add_argument('--test', type=str, default='./testset.txt',
                 help='Testset file')
-p.add_argument('--op', type=str, default='sys.stdout', help='Path of output file')
+p.add_argument('--op', type=str, default='../OUTPUTS/classifier_acc.txt', help='Path of output file')
 p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p = p.parse_args()
@@ -38,17 +51,14 @@ verbose = p.verbose
 trainset = p.train
 testset = p.test
 clean_data = p.clean_data_root
-train = []
-test = []
+train = [[] for i in range(_lines_in_file(trainset))]
+test = [[] for i in range(_lines_in_file(testset))]
 
 with open(trainset, 'rt') as trainfile:
-    count = 0
     for line in trainfile:
         line = line.strip('\n')
-        train.append([])
-        train[count] = line.split()
-        # train[count][-1] = train[count][-1]
-        count += 1
+        people = line.split()
+        train[int(people[0])] = people[1:]
 
 # print(train)
 train_x = []
@@ -56,37 +66,55 @@ train_y = []
 for i in range(len(train)):
     dir_path = os.path.join(clean_data, "community"+str(i))
     for j in train[i]:
-        train_x.append(os.path.join(dir_path, j+".txt"))
-        train_y.append(i)
+        filepath = os.path.join(dir_path, j+".txt")
+        if os.path.exists(filepath):
+            train_x.append(filepath)
+            train_y.append(i)
+        else:
+            print("[TRAIN SET] community"+str(i), j+".txt", "not found.")
         
 with open(testset, 'rt') as testfile:
-    count = 0
     for line in testfile:
         line = line.strip('\n')
-        test.append([])
-        test[count] = line.split()
-        count += 1
+        people = line.split()
+        test[int(people[0])] = people[1:]
 
 # print(train)
 test_x = []
 test_y = []   
 for i in range(len(test)):
     dir_path = os.path.join(clean_data, "community"+str(i))
-    for j in train[i]:
-        test_x.append(os.path.join(dir_path, j+".txt"))
-        test_y.append(i)
+    for j in test[i]:
+        filepath = os.path.join(dir_path, j+".txt")
+        if os.path.exists(filepath):
+            test_x.append(filepath)
+            test_y.append(i)
+        else:
+            print("[TEST SET] community"+str(i), j+".txt", "not found.")
 
+if verbose:
+    print("Reading train and test file complete")
+    
 vectorizer = TfidfVectorizer(input='filename')
+selector = SelectKBest(mutual_info_classif, k=100)
+
 train_x_tf = vectorizer.fit_transform(train_x)
-print(train_x_tf.shape)
+train_x_stf = selector.fit_transform(train_x_tf, train_y)
+# print(train_x_stf.shape)
 
 from sklearn.naive_bayes import MultinomialNB
-clf = MultinomialNB().fit(train_x_tf, train_y)
+clf = MultinomialNB().fit(train_x_stf, train_y)
 
 if(verbose):
     print("Training complete")
     
 test_x_tf = vectorizer.transform(test_x)
-pred = clf.predict(test_x_tf)
-print("Testset accuracy obtained: ", end='', file=p.op_file)
-print(np.mean(pred == test_y))
+test_x_stf = selector.transform(test_x_tf)
+# print(test_x_stf.shape)
+pred = clf.predict(test_x_stf)
+
+print("Testset accuracy obtained: ", end='')
+acc = np.mean(pred == test_y)
+print(acc)
+with open(p.op, 'wt') as f:
+    f.write("Testset accuracy obtained: " + str(acc))

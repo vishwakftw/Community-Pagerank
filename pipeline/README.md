@@ -27,6 +27,6 @@ python page_data.py [-h] [--root ROOT] --communities COMMUNITIES
 + For `data_preprocess.py`, the options are:
 ```
 python data_preprocess.py [-h] [--dir_root RAW DATA ROOT] [--verbose]
-                          [--clean_data EMPTY_DIR_FOR_OUTPUT]
+                          [--clean_data EMPTY_DIR_FOR_OUTPUT] [--stem]
                           
 + For information about the options can be found using the `-h` tag.
