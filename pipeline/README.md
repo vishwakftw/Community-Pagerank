@@ -24,6 +24,7 @@ python community_pagerank.py [-h] --file_root FILE_ROOT [--fraction FRACTION]
 ```
 python page_data.py [-h] [--root ROOT] --communities COMMUNITIES
                     [--basic_info BASIC_INFO] [--category_info CATEGORY_INFO]
+                    [--max_files_per_comm MAX_FILES_PER_COMM]
 ```
 + For `data_preprocess.py`, the options are:
 ```
@@ -37,3 +38,18 @@ python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
                      [--verbose]
 ```
 + For information about the options can be found using the `-h` tag.
+
+#### Obtaining pages using Python-Wikipedia
+-------------------------------------------
+
++ Given a name of a person, it would rather seem easy to extract pages using the API provided.
++ Unfortunately, that was not the case. There were some pages for which either a `DisambiguationError` or a `PageError` was thrown.
++ This issue was resolved in the following steps:
+    + Take a person whose name is `NAME`. Perform `wikipedia.page(NAME)`.
+        + If exception doesn't arise, then well and good.
+        + If exception arises, then we perform `wikipedia.search(NAME)`.
+            + Collect all the candidate pages, and keep only those with `NAME` in it.
+            + Obtain the pages, and check the category.
+            + Use the page with the highest non-zero category intersection between category provided online, and categories in the dataset.
+            + If no such page exists, then we leave that person.
++ This is the jist of what happens [here](https://github.com/vishwakftw/CS6670-TDM/blob/master/pipeline/page_data.py#L93-L115).
