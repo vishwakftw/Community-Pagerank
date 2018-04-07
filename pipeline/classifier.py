@@ -27,6 +27,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import mutual_info_classif
 import numpy as np
+import itertools
 from matplotlib import pyplot as plt
 
 def _lines_in_file(file_path):
@@ -134,7 +135,7 @@ if(verbose):
 test_x_tf = vectorizer.transform(test_x)
 test_x_stf = selector.transform(test_x_tf)
 if verbose:
-    print(" Shape of testing data: {}".format(test_x_stf.shape))
+    print("Shape of testing data: {}".format(test_x_stf.shape))
 pred = clf.predict(test_x_stf)
 
 print("Testing set accuracy obtained: ", end='')
@@ -149,3 +150,4 @@ if p.show_confusion_matrix:
     plt.figure()
     plot_confusion_matrix(cnf_mat, len(train))
     plt.show()
+    plt.savefig('confusion_matrix.png', dpi=100)
