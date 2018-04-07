@@ -162,4 +162,4 @@ for i, G in enumerate(comm_graphs):
             write_file.write('\t{}'.format(n))
         write_file.write('\n')
         if verbose:
-            print("{} residual nodes information saved for community {}".format(i))
+            print("Residual nodes information saved for community {}".format(i))
