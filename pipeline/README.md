@@ -23,10 +23,9 @@ python community_pagerank.py [-h] --file_root FILE_ROOT [--fraction FRACTION]
 python page_data.py [-h] [--root ROOT] --communities COMMUNITIES
                     [--basic_info BASIC_INFO] [--category_info CATEGORY_INFO]
 ```
-
 + For `data_preprocess.py`, the options are:
 ```
 python data_preprocess.py [-h] [--dir_root RAW DATA ROOT] [--verbose]
                           [--clean_data EMPTY_DIR_FOR_OUTPUT] [--stem]
-                          
+```
 + For information about the options can be found using the `-h` tag.

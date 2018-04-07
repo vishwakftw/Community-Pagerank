@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import division
 import os
 import numpy as np
-import pandas as pd
 import community as c
 import networkx as nx
 from argparse import ArgumentParser as AP
@@ -21,6 +20,7 @@ p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--k', type=int, default=5, help='value for number of top people')
+p.add_argument('--residuals', type=int, default=5, help='Number of people to get other than the top K')
 p.add_argument('--min_comm_size', type=int, default=10, help='Minimum community size to consider for PageRank')
 p.add_argument('--comm_src', type=str, default=None,
                help='Source for community information stored as <comm_id> [\\t person_id]+')
@@ -136,13 +136,16 @@ for i, G in enumerate(comm_graphs):
     nodes = nodes.reshape(-1)
     pagerank_vals = np.array(pagerank_vals, dtype=float).reshape(-1)
 
-    # Get top-k values
     if len(nodes) <= p.k:
-        top_k_indices = np.arange(0, len(nodes))
+        top_indices = np.arange(0, len(nodes))
     else:
-        top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
-    top_k_vals = pagerank_vals[top_k_indices]
-    top_k_nodes = nodes[top_k_indices]
+        top_indices = np.argpartition(pagerank_vals, -(p.k + p.residuals))[-(p.k + p.residuals):]
+
+    top_vals = pagerank_vals[top_indices]  # Get top indices which is top K + top residuals
+    top_nodes = nodes[top_indices]  # Get nodes from the larger collection
+    top_vals_sorted_args = np.argsort(top_vals)  # Sort a smaller array
+    top_k_nodes = nodes[top_vals_sorted_args][p.residuals:]  # Get the top K nodes
+    residual_nodes = nodes[top_vals_sorted_args][:p.residuals]  # Get the top residual nodes
 
     # Print only person IDs to file
     with open('top-{}-nodes-per-community.txt'.format(p.k), 'a') as write_file:
@@ -153,12 +156,10 @@ for i, G in enumerate(comm_graphs):
         if verbose:
             print("Top k information saved for community {}".format(i))
 
-    with open('remaining-nodes-per-community.txt', 'a') as write_file:
+    with open('residual-{}-nodes-per-community.txt'.format(p.residuals), 'a') as write_file:
         write_file.write('{}'.format(i))
-        remaining_indices = set(range(len(nodes))) - set(top_k_indices.tolist())
-        remaining_nodes = nodes[remaining_indices]
-        for n in remaining_nodes:
+        for n in residual_nodes:
             write_file.write('\t{}'.format(n))
         write_file.write('\n')
         if verbose:
-            print("Remaining nodes saved for community {}".format(i))
+            print("{} residual nodes information saved for community {}".format(i))
