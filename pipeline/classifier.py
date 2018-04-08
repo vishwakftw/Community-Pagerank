@@ -26,6 +26,7 @@ from math import sqrt
 from argparse import ArgumentParser as AP
 
 import numpy as np
+import scipy.sparse as ssp
 from matplotlib import pyplot as plt
 from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
@@ -36,6 +37,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import mutual_info_classif, SelectKBest
 from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
+
+def _check_exists(number):
+    a1 = os.path.exists('./train_features_x-{}.npz'.format(number))
+    a2 = os.path.exists('./test_features_x-{}.npz'.format(number))
+    a3 = os.path.exists('./train_features_y-{}.npy'.format(number))
+    a4 = os.path.exists('./test_features_y-{}.npy'.format(number))
+    return a1 and a2 and a3 and a4
 
 def _lines_in_file(file_path):
     with open(file_path, 'r') as f:
@@ -75,6 +83,8 @@ p.add_argument('--classifier', type=str,
                         'ovo-svm', 'ovo-logistic', 'ovr-svm', 'ovr-logistic'],
                default='naive-bayes', help='classifier option')
 p.add_argument('--nfeatures', type=int, default=10000, help='Number of top features to extract')
+p.add_argument('--save_load', action='store_true',
+               help='Toggle to save / load features to prevent redundant computation')
 p = p.parse_args()
 
 verbose = p.verbose
@@ -124,13 +134,36 @@ for i in range(len(test)):
 if verbose:
     print("Reading train and test file complete")
 
-vectorizer = TfidfVectorizer(input='filename')
-selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
+if _check_exists(p.nfeatures) and p.save_load:
+    if verbose:
+        print("Loading from files...")
+    train_x_stf = ssp.load_npz('./train_features_x-{}.npz'.format(p.nfeatures))
+    train_x_stf = train_x_stf.toarray()
+    train_y = np.load('./train_features_y-{}.npy'.format(p.nfeatures))
+    test_x_stf = ssp.load_npz('./test_features_x-{}.npz'.format(p.nfeatures))
+    test_x_stf = test_x_stf.toarray()
+    test_y = np.load('./test_features_y-{}.npy'.format(p.nfeatures))
+else:
+    vectorizer = TfidfVectorizer(input='filename')
+    selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
 
-train_x_tf = vectorizer.fit_transform(train_x)
-train_x_stf = selector.fit_transform(train_x_tf, train_y)
+    train_x_tf = vectorizer.fit_transform(train_x)
+    train_x_stf = selector.fit_transform(train_x_tf, train_y)
+    test_x_tf = vectorizer.transform(test_x)
+    test_x_stf = selector.transform(test_x_tf)
+    if p.save_load:
+        if verbose:
+            print("Saving to files...")
+        ssp.save_npz('./train_features_x-{}.npz'.format(p.nfeatures), train_x_stf)
+        train_y = np.array(train_y)
+        train_y.dump('./train_features_y-{}.npy'.format(p.nfeatures))
+        ssp.save_npz('./test_features_x-{}.npz'.format(p.nfeatures), test_x_stf)
+        test_y = np.array(test_y)
+        test_y.dump('./test_features_y-{}.npy'.format(p.nfeatures))
+
 if verbose:
     print("Shape of training data: {}".format(train_x_stf.shape))
+    print("Shape of testing data: {}".format(test_x_stf.shape))
 
 # Classifier region
 if p.classifier == 'naive-bayes':
@@ -155,27 +188,23 @@ elif p.classifier == 'logistic':
 
 elif p.classifier == 'ovo-svm':
     base_clf = SVC(kernel='rbf', class_weight='balanced')
-    clf = OneVsOneClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+    clf = OneVsOneClassifier(base_clf).fit(train_x_stf, train_y)
 
 elif p.classifier == 'ovo-logistic':
     base_clf = LogisticRegression(class_weight='balanced')
-    clf = OneVsOneClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+    clf = OneVsOneClassifier(base_clf).fit(train_x_stf, train_y)
 
 elif p.classifier == 'ovr-svm':
     base_clf = SVC(kernel='rbf', class_weight='balanced')
-    clf = OneVsRestClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+    clf = OneVsRestClassifier(base_clf).fit(train_x_stf, train_y)
 
 elif p.classifier == 'ovr-logistic':
     base_clf = LogisticRegression(class_weight='balanced')
-    clf = OneVsRestClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+    clf = OneVsRestClassifier(base_clf).fit(train_x_stf, train_y)
 
 if(verbose):
     print("Training complete")
 
-test_x_tf = vectorizer.transform(test_x)
-test_x_stf = selector.transform(test_x_tf)
-if verbose:
-    print("Shape of testing data: {}".format(test_x_stf.shape))
 pred = clf.predict(test_x_stf)
 
 print("Testing set accuracy obtained: ", end='')

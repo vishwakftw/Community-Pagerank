@@ -36,6 +36,7 @@ python data_preprocess.py [-h] [--dir_root RAW DATA ROOT] [--verbose]
 python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
                      [--test TEST] [--op OP] [--show_confusion_matrix]
                      [--verbose] [--classifier CLASSIFIER] [--nfeatures NFEATURES]
+                     [--save_load]
 ```
 + For information about the options can be found using the `-h` tag.
 
