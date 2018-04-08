@@ -1,7 +1,7 @@
 ### Our Pipeline
 ----------------
 
-+ First we detect communities in the graph using Louvain's algorithm. For this we use the `community_pagerank.py` script. This uses [Networkx](https://networkx.github.io), [Community](https://perso.crans.org/aynaud/communities/index.html) primarly.
++ First we detect communities in the graph using Louvain's algorithm. For this we use the `community_pagerank.py` script. This uses [Networkx](https://networkx.github.io), [Community](https://perso.crans.org/aynaud/communities/index.html) primarily.
     + If the communities have been detected using either Louvain's algorithm or any other algorithm for that matter, you can provide the communities in the following format: `<comm_id> [\t person_id]`.
     + You will also need to provide the details of the networks in an adjacency list format as prescribed in the dataset itself.
 + After this, we will obtain the top _K_ users of each "large" community. By default, "large" means communities with size greater than or equal to 50 and _K_ is 45. This is done using PageRank.
@@ -53,3 +53,13 @@ python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
             + Use the page with the highest non-zero category intersection between category provided online, and categories in the dataset.
             + If no such page exists, then we leave that person.
 + This is the jist of what happens [here](https://github.com/vishwakftw/CS6670-TDM/blob/master/pipeline/page_data.py#L93-L115).
+
+#### Classifiers used
+---------------------
+
++ Multinomial Naive-Bayes
++ Multinomial Logistic Regression
++ Multilayer perceptrons with 1 and 2 hidden layers
++ K-Nearest Neighbours
++ One-vs-One classification using Support Vector Machines and Logistic Regression
++ One-vs-Rest classification using Support Vector Machines and Logistic Regression

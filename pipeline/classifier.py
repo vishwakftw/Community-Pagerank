@@ -21,21 +21,21 @@ Accuracy on test set
 from __future__ import print_function
 from __future__ import division
 import os
-import numpy as np
+import itertools
 from math import sqrt
-from matplotlib import pyplot as plt
 from argparse import ArgumentParser as AP
+
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import mutual_info_classif
-import numpy as np
-import itertools
-from matplotlib import pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.feature_selection import mutual_info_classif, SelectKBest
+from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 
 def _lines_in_file(file_path):
     with open(file_path, 'r') as f:
@@ -48,7 +48,7 @@ def plot_confusion_matrix(cm, n_classes):
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.bwr)
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.seismic)
     plt.title('Confusion matrix')
     plt.colorbar()
     tick_marks = np.arange(0, n_classes, 5)
@@ -64,11 +64,15 @@ p.add_argument('--train', type=str, default='./trainset.txt',
                help='Trainset file')
 p.add_argument('--test', type=str, default='./testset.txt',
                help='Testset file')
-p.add_argument('--op', type=str, default='../OUTPUTS/classifier_acc.txt', help='Path of output file')
-p.add_argument('--show_confusion_matrix', action='store_true', help='Option to show confusion matrix')
+p.add_argument('--op', type=str, default='../OUTPUTS/classifier_acc.txt',
+               help='Path of output file')
+p.add_argument('--show_confusion_matrix', action='store_true',
+               help='Option to show confusion matrix')
 p.add_argument('--verbose', action='store_true',
-               help='option to print information at regular intervals | not helpful for large graphs')
-p.add_argument('--classifier', type=str, choices=['naive-bayes', 'mlp', 'random-forest', 'adaboost'],
+               help='option to print information at regular intervals')
+p.add_argument('--classifier', type=str,
+               choices=['naive-bayes', 'mlp-1', 'mlp-2', 'knn', 'logistic',
+                        'ovo-svm', 'ovo-logistic', 'ovr-svm', 'ovr-logistic'],
                default='naive-bayes', help='classifier option')
 p.add_argument('--nfeatures', type=int, default=10000, help='Number of top features to extract')
 p = p.parse_args()
@@ -132,24 +136,38 @@ if verbose:
 if p.classifier == 'naive-bayes':
     clf = MultinomialNB().fit(train_x_stf, train_y)
 
-elif p.classifier == 'mlp':
+elif p.classifier == 'mlp-1':
     clf = MLPClassifier(solver='lbfgs',
-                        hidden_layer_sizes=(int(sqrt(p.nfeatures)),
-                                            len(train))
+                        hidden_layer_sizes=(int(sqrt(p.nfeatures)),)
                        ).fit(train_x_stf, train_y)
-elif p.classifier == 'random-forest':
-    base_clf = RandomForestClassifier()
-    param_grid = {"n_estimators": [10, 20, 40, 100, 200],
-                  "max_depth": [3, 5, None],
-                  "max_features": [1, 3, 10],
-                  "min_samples_split": [2, 3, 5],
-                  "min_samples_leaf": [3, 5, 10],
-                  "bootstrap": [True, False],
-                  "criterion": ["gini", "entropy"]}
-    clf = GridSearchCV(base_clf, param_grid=param_grid).fit(train_x_stf, train_y)
 
-elif p.classifier == 'adaboost':
-    base_clf = AdaBoostClassifier().fit(train_x_stf, train_y)
+elif p.classifier == 'mlp-2':
+    clf = MLPClassifier(solver='lbfgs',
+                        hidden_layer_sizes=(2 * int(sqrt(p.nfeatures)), int(sqrt(p.nfeatures)))
+                       ).fit(train_x_stf, train_y)
+
+elif p.classifier == 'knn':
+    clf = KNeighborsClassifier(n_neighbors=11).fit(train_x_stf, train_y)
+
+elif p.classifier == 'logistic':
+    clf = LogisticRegression(class_weight='balanced',
+                             multi_class='multinomial', solver='sag').fit(train_x_stf, train_y)
+
+elif p.classifier == 'ovo-svm':
+    base_clf = SVC(kernel='rbf', class_weight='balanced')
+    clf = OneVsOneClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+
+elif p.classifier == 'ovo-logistic':
+    base_clf = LogisticRegression(class_weight='balanced')
+    clf = OneVsOneClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+
+elif p.classifier == 'ovr-svm':
+    base_clf = SVC(kernel='rbf', class_weight='balanced')
+    clf = OneVsRestClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
+
+elif p.classifier == 'ovr-logistic':
+    base_clf = LogisticRegression(class_weight='balanced')
+    clf = OneVsRestClassifier(base_clf, n_jobs=2).fit(train_x_stf, train_y)
 
 if(verbose):
     print("Training complete")
@@ -163,12 +181,12 @@ pred = clf.predict(test_x_stf)
 print("Testing set accuracy obtained: ", end='')
 acc = np.mean(pred == test_y)
 print(acc)
-with open(p.op, 'wt') as f:
-    f.write("Testset accuracy obtained: " + str(acc))
+with open(p.op, 'a') as f:
+    f.write('{}\t{}\t{}\n'.format(p.classifier, p.nfeatures, round(acc, 7)))
 
 if p.show_confusion_matrix:
     cnf_mat = confusion_matrix(test_y, pred)
     plt.figure()
     plot_confusion_matrix(cnf_mat, len(train))
-    plt.show()
-    plt.savefig('confusion_matrix.png', dpi=100)
+    plt.savefig('confusion_matrix[clf={},nfeatures={}].png'.format(p.classifier, p.nfeatures),
+                dpi=100)
