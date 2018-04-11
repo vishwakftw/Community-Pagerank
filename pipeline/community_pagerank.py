@@ -57,10 +57,7 @@ if p.comm_src is None:
             if edge_weight < threshold:
                 continue
 
-            if unweighted_comm:
-                cur_graph.add_edge(vals[1], vals[0], weight=1)
-            else:
-                cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
+            cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
             count += 1
 
             if verbose:
@@ -73,7 +70,10 @@ if p.comm_src is None:
     if verbose:
         print("Graph constructed")
 
-    partition = c.best_partition(cur_graph)
+    if unweighted_comm:
+        partition = c.best_partition(cur_graph, weight=None)
+    else:
+        partition = c.best_partition(cur_graph)
 
     if verbose:
         print("Final graph has {} vertices".format(len(partition)))

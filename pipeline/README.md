@@ -18,7 +18,8 @@
 python community_pagerank.py [-h] --file_root FILE_ROOT [--fraction FRACTION]
                              [--shuffle] [--verbose] [--threshold THRESHOLD]
                              [--k K] [--min_comm_size MIN_COMM_SIZE]
-                             [--comm_src COMM_SRC]
+                             [--comm_src COMM_SRC] [--unweighted_community]
+                             [--unweighted_pagerank]
 ```
 + For `page_data.py`, the options are:
 ```
@@ -44,7 +45,7 @@ python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
 -------------------------------------------
 
 + Given a name of a person, it would rather seem easy to extract pages using the API provided.
-+ Unfortunately, that was not the case. There were some pages for which either a `DisambiguationError` or a `PageError` was thrown.
++ Unfortunately, that was not the case. There were some pages for which either a `DisambiguationError` or a `PageError` or any other exception was thrown.
 + This issue was resolved in the following steps:
     + Take a person whose name is `NAME`. Perform `wikipedia.page(NAME)`.
         + If exception doesn't arise, then well and good.
@@ -52,8 +53,8 @@ python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
             + Collect all the candidate pages, and keep only those with `NAME` in it.
             + Obtain the pages, and check the category.
             + Use the page with the highest non-zero category intersection between category provided online, and categories in the dataset.
-            + If no such page exists, then we leave that person.
-+ This is the jist of what happens [here](https://github.com/vishwakftw/CS6670-TDM/blob/master/pipeline/page_data.py#L93-L115).
+            + If no such page exists or further exceptions occur, then we exclude that person's page for the dataset.
++ This is basically the jist of what happens [here](https://github.com/vishwakftw/CS6670-TDM/blob/master/pipeline/page_data.py#L93-L115).
 
 #### Classifiers used
 ---------------------
@@ -62,5 +63,5 @@ python classifier.py [-h] [--clean_data_root CLEAN_DATA_ROOT] [--train TRAIN]
 + Multinomial Logistic Regression
 + Multilayer perceptrons with 1 and 2 hidden layers
 + K-Nearest Neighbours
-+ One-vs-One classification using Support Vector Machines and Logistic Regression
-+ One-vs-Rest classification using Support Vector Machines and Logistic Regression
++ One-vs-One classification using Binary Logistic Regression
++ One-vs-Rest classification using Binary Logistic Regression
