@@ -20,10 +20,13 @@ p.add_argument('--verbose', action='store_true',
                 help='option to print information at regular intervals | not helpful for large graphs')
 p.add_argument('--threshold', type=float, default=0.0019, help='threshold for selection of edges')
 p.add_argument('--k', type=int, default=5, help='value for number of top people')
-p.add_argument('--residuals', type=int, default=5, help='Number of people to get other than the top K')
 p.add_argument('--min_comm_size', type=int, default=10, help='Minimum community size to consider for PageRank')
 p.add_argument('--comm_src', type=str, default=None,
                help='Source for community information stored as <comm_id> [\\t person_id]+')
+p.add_argument('--unweighted_community', action='store_true',
+               help='Toggle to use unweighted graph for community detection')
+p.add_argument('--unweighted_pagerank', action='store_true',
+               help='Toggle to use unweighted graph for PageRank in communities')
 p = p.parse_args()
 
 assert p.fraction > 0 and p.fraction <= 1, "Fraction limits exceeded"
@@ -32,6 +35,8 @@ assert p.threshold >= 0 and p.threshold <= 1, "Threshold limits exceeded"
 threshold = p.threshold
 filepath = p.file_root
 verbose = p.verbose
+unweighted_comm = p.unweighted_community
+unweighted_pgrk = p.unweighted_pagerank
 
 if p.shuffle:
     os.system('shuf {} -o {}_shuf.txt'.format(filepath, filepath[:-4]))
@@ -52,7 +57,10 @@ if p.comm_src is None:
             if edge_weight < threshold:
                 continue
 
-            cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
+            if unweighted_comm:
+                cur_graph.add_edge(vals[1], vals[0], weight=1)
+            else:
+                cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
             count += 1
 
             if verbose:
@@ -87,11 +95,12 @@ else:
             vals[-1] = vals[-1][:-1]  # Remove the newline character in the end
             partitionT[vals[0]] = set(vals[1:])
 
-    edges_set = {}
-    with open(p.file_root, 'r') as edge_file:
-        for line in edge_file:
-            vals = line.split()
-            edges_set[(vals[0], vals[1])] = float(vals[2])
+    if not unweighted_pgrk:
+        edges_set = {}
+        with open(p.file_root, 'r') as edge_file:
+            for line in edge_file:
+                vals = line.split()
+                edges_set[(vals[0], vals[1])] = float(vals[2])
 
 # Construct community graphs
 comm_graphs = []
@@ -116,13 +125,19 @@ for n_g in partitionT.keys():
             V = comm_node_list[j]
             if p.comm_src is None:
                 try:
-                    new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
+                    if unweighted_pgrk:
+                        new_graph.add_edge(U, V, weight=1)
+                    else:
+                        new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
                 except KeyError:
                     continue
             else:
                 try:
-                    new_graph.add_edge(U, V, weight=edges_set[(U, V)])
-                    edges_set.pop((U, V))  # An edge occurs only once due to hard assignment
+                    if unweighted_pgrk:
+                        new_graph.add_edge(U, V, 1)
+                    else:
+                        new_graph.add_edge(U, V, weight=edges_set[(U, V)])
+                        edges_set.pop((U, V))  # An edge occurs only once due to hard assignment
                 except KeyError:
                     pass
 
@@ -137,15 +152,11 @@ for i, G in enumerate(comm_graphs):
     pagerank_vals = np.array(pagerank_vals, dtype=float).reshape(-1)
 
     if len(nodes) <= p.k:
-        top_indices = np.arange(0, len(nodes))
+        top_k_indices = np.arange(0, len(nodes))
     else:
-        top_indices = np.argpartition(pagerank_vals, -(p.k + p.residuals))[-(p.k + p.residuals):]
-
-    top_vals = pagerank_vals[top_indices]  # Get top indices which is top K + top residuals
-    top_nodes = nodes[top_indices]  # Get nodes from the larger collection
-    top_vals_sorted_args = np.argsort(top_vals)  # Sort a smaller array
-    top_k_nodes = nodes[top_vals_sorted_args][p.residuals:]  # Get the top K nodes
-    residual_nodes = nodes[top_vals_sorted_args][:p.residuals]  # Get the top residual nodes
+        top_k_indices = np.argpartition(pagerank_vals, -p.k)[-p.k:]
+    top_k_vals = pagerank_vals[top_k_indices]
+    top_k_nodes = nodes[top_k_indices]
 
     # Print only person IDs to file
     with open('top-{}-nodes-per-community.txt'.format(p.k), 'a') as write_file:
@@ -155,11 +166,3 @@ for i, G in enumerate(comm_graphs):
         write_file.write('\n')
         if verbose:
             print("Top k information saved for community {}".format(i))
-
-    with open('residual-{}-nodes-per-community.txt'.format(p.residuals), 'a') as write_file:
-        write_file.write('{}'.format(i))
-        for n in residual_nodes:
-            write_file.write('\t{}'.format(n))
-        write_file.write('\n')
-        if verbose:
-            print("Residual nodes information saved for community {}".format(i))
