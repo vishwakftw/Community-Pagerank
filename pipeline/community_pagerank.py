@@ -48,30 +48,18 @@ if p.comm_src is None:
     edges_to_add = int(_lines_in_file(filepath) * p.fraction)
     print("Number of edges to add: {}".format(edges_to_add))
 
-    with open(filepath, 'r') as graph_file:
-        count = 0
-        for line in graph_file:
-            vals = line.split()
-            edge_weight = float(vals[2])
+    all_edges = np.genfromtxt(filepath, dtype=str, max_rows=edges_to_add)
+    fmt_all_edges = [(e[0], e[1], float(e[2])) for e in all_edges if float(e[2]) >= threshold]
 
-            if edge_weight < threshold:
-                continue
-
-            cur_graph.add_edge(vals[1], vals[0], weight=edge_weight)
-            count += 1
-
-            if verbose:
-                if count % 100 == 0:
-                    print("Added {} edges".format(cur_graph.size()))
-
-            if count == edges_to_add:
-                break
+    cur_graph.add_weighted_edges_from(fmt_all_edges)
+    del all_edges  # clear memory, possibly high for huge graphs
+    del fmt_all_edges  # clear memory, possibly high for huge graphs
 
     if verbose:
         print("Graph constructed")
 
     if unweighted_comm:
-        partition = c.best_partition(cur_graph, weight=None)
+        partition = c.best_partition(cur_graph, weight='')
     else:
         partition = c.best_partition(cur_graph)
 
@@ -124,22 +112,22 @@ for n_g in partitionT.keys():
             U = comm_node_list[i]
             V = comm_node_list[j]
             if p.comm_src is None:
-                try:
-                    if unweighted_pgrk:
-                        new_graph.add_edge(U, V, weight=1)
-                    else:
+                if unweighted_pgrk:
+                    new_graph.add_edge(U, V, weight=1)
+                else:
+                    try:
                         new_graph.add_edge(U, V, weight=cur_graph[U][V]['weight'])
-                except KeyError:
-                    continue
+                    except KeyError:
+                        pass
             else:
-                try:
-                    if unweighted_pgrk:
-                        new_graph.add_edge(U, V, 1)
-                    else:
+                if unweighted_pgrk:
+                    new_graph.add_edge(U, V, weight=1)
+                else:
+                    try:
                         new_graph.add_edge(U, V, weight=edges_set[(U, V)])
                         edges_set.pop((U, V))  # An edge occurs only once due to hard assignment
-                except KeyError:
-                    pass
+                    except KeyError:
+                        pass
 
     comm_graphs.append(new_graph)
 
