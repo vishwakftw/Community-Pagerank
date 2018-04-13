@@ -38,11 +38,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import mutual_info_classif, SelectKBest
 from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 
-def _check_exists(number):
-    a1 = os.path.exists('./train_features_x-{}.npz'.format(number))
-    a2 = os.path.exists('./test_features_x-{}.npz'.format(number))
-    a3 = os.path.exists('./train_features_y-{}.npy'.format(number))
-    a4 = os.path.exists('./test_features_y-{}.npy'.format(number))
+def _check_exists(feat, number):
+    a1 = os.path.exists('./train_features_x-{}-{}.npz'.format(feat, number))
+    a2 = os.path.exists('./test_features_x-{}-{}.npz'.format(feat, number))
+    a3 = os.path.exists('./train_features_y-{}-{}.npy'.format(feat, number))
+    a4 = os.path.exists('./test_features_y-{}-{}.npy'.format(feat, number))
     return a1 and a2 and a3 and a4
 
 def _lines_in_file(file_path):
@@ -78,6 +78,9 @@ p.add_argument('--show_confusion_matrix', action='store_true',
                help='Option to show confusion matrix')
 p.add_argument('--verbose', action='store_true',
                help='option to print information at regular intervals')
+p.add_argument('--feature', type=str,
+                choices=['best', 'random', 'tfbest', 'tfrandom', 'lda'], default='best', 
+                help='Feature type to use. Default: K Best from TFIDF')
 p.add_argument('--classifier', type=str,
                choices=['naive-bayes', 'mlp-1', 'mlp-2', 'knn', 'logistic',
                         'ovo-svm', 'ovo-logistic', 'ovr-svm', 'ovr-logistic'],
@@ -91,6 +94,7 @@ verbose = p.verbose
 trainset = p.train
 testset = p.test
 clean_data = p.clean_data_root
+feature = p.feature
 train = [[] for i in range(_lines_in_file(trainset))]
 test = [[] for i in range(_lines_in_file(testset))]
 
@@ -134,32 +138,39 @@ for i in range(len(test)):
 if verbose:
     print("Reading train and test file complete")
 
-if _check_exists(p.nfeatures) and p.save_load:
+if _check_exists(feature, p.nfeatures) and p.save_load:
     if verbose:
         print("Loading from files...")
-    train_x_stf = ssp.load_npz('./train_features_x-{}.npz'.format(p.nfeatures))
+    train_x_stf = ssp.load_npz('./train_features_x-{}-{}.npz'.format(feature, p.nfeatures))
     train_x_stf = train_x_stf.toarray()
-    train_y = np.load('./train_features_y-{}.npy'.format(p.nfeatures))
-    test_x_stf = ssp.load_npz('./test_features_x-{}.npz'.format(p.nfeatures))
+    train_y = np.load('./train_features_y-{}-{}.npy'.format(feature, p.nfeatures))
+    test_x_stf = ssp.load_npz('./test_features_x-{}-{}.npz'.format(feature, p.nfeatures))
     test_x_stf = test_x_stf.toarray()
-    test_y = np.load('./test_features_y-{}.npy'.format(p.nfeatures))
+    test_y = np.load('./test_features_y-{}-{}.npy'.format(feature, p.nfeatures))
 else:
-    vectorizer = TfidfVectorizer(input='filename')
-    selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
-
-    train_x_tf = vectorizer.fit_transform(train_x)
-    train_x_stf = selector.fit_transform(train_x_tf, train_y)
-    test_x_tf = vectorizer.transform(test_x)
-    test_x_stf = selector.transform(test_x_tf)
-    if p.save_load:
-        if verbose:
-            print("Saving to files...")
-        ssp.save_npz('./train_features_x-{}.npz'.format(p.nfeatures), train_x_stf)
-        train_y = np.array(train_y)
-        train_y.dump('./train_features_y-{}.npy'.format(p.nfeatures))
-        ssp.save_npz('./test_features_x-{}.npz'.format(p.nfeatures), test_x_stf)
-        test_y = np.array(test_y)
-        test_y.dump('./test_features_y-{}.npy'.format(p.nfeatures))
+    if feature != 'lda':
+        is_idf = False if feature == 'tfbest' or feature == 'tfrandom' else True
+        vectorizer = TfidfVectorizer(input='filename', use_idf=is_idf)
+        selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
+        
+        train_x_tf = vectorizer.fit_transform(train_x)
+        if 'random' in feature:
+            train_y = [1 for x in range(len(train_x))]
+        train_x_stf = selector.fit_transform(train_x_tf, train_y)
+        test_x_tf = vectorizer.transform(test_x)
+        test_x_stf = selector.transform(test_x_tf)
+        if p.save_load:
+            if verbose:
+                print("Saving to files...")
+            ssp.save_npz('./train_features_x-{}-{}.npz'.format(feature, p.nfeatures), train_x_stf)
+            train_y = np.array(train_y)
+            train_y.dump('./train_features_y-{}-{}.npy'.format(feature, p.nfeatures))
+            ssp.save_npz('./test_features_x-{}-{}.npz'.format(feature, p.nfeatures), test_x_stf)
+            test_y = np.array(test_y)
+            test_y.dump('./test_features_y-{}-{}.npy'.format(feature, p.nfeatures))
+    else:
+        print('ERROR: lda not yet implemented')
+        exit(0)
 
 if verbose:
     print("Shape of training data: {}".format(train_x_stf.shape))
@@ -217,5 +228,5 @@ if p.show_confusion_matrix:
     cnf_mat = confusion_matrix(test_y, pred)
     plt.figure()
     plot_confusion_matrix(cnf_mat, len(train))
-    plt.savefig('confusion_matrix[clf={},nfeatures={}].png'.format(p.classifier, p.nfeatures),
+    plt.savefig('confusion_matrix[clf={},feature={},nfeatures={}].png'.format(p.classifier, feature, p.nfeatures),
                 dpi=100)
