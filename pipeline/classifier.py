@@ -155,8 +155,10 @@ else:
         
         train_x_tf = vectorizer.fit_transform(train_x)
         if 'random' in feature:
-            train_y = [1 for x in range(len(train_x))]
-        train_x_stf = selector.fit_transform(train_x_tf, train_y)
+            train_target = [1 for x in range(len(train_x))]
+        else:
+            train_target = train_y
+        train_x_stf = selector.fit_transform(train_x_tf, train_target)
         test_x_tf = vectorizer.transform(test_x)
         test_x_stf = selector.transform(test_x_tf)
         if p.save_load:
