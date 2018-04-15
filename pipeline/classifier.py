@@ -152,15 +152,19 @@ else:
         is_idf = False if feature == 'tfbest' or feature == 'tfrandom' else True
         vectorizer = TfidfVectorizer(input='filename', use_idf=is_idf)
         selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
-        
+                
         train_x_tf = vectorizer.fit_transform(train_x)
         if 'random' in feature:
-            train_target = [1 for x in range(len(train_x))]
+            train_x_stf = train_x_tf[:,:p.nfeatures]
         else:
-            train_target = train_y
-        train_x_stf = selector.fit_transform(train_x_tf, train_target)
+            train_x_stf = selector.fit_transform(train_x_tf, train_y)
+        
         test_x_tf = vectorizer.transform(test_x)
-        test_x_stf = selector.transform(test_x_tf)
+        if 'random' in feature:
+            test_x_stf = test_x_tf[:,:p.nfeatures]
+        else:
+            test_x_stf = selector.transform(test_x_tf)
+        
         if p.save_load:
             if verbose:
                 print("Saving to files...")
