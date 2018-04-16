@@ -28,7 +28,6 @@ from argparse import ArgumentParser as AP
 import numpy as np
 import scipy.sparse as ssp
 from matplotlib import pyplot as plt
-from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neural_network import MLPClassifier
@@ -38,6 +37,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import mutual_info_classif, SelectKBest
 from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 
+
 def _check_exists(feat, number):
     a1 = os.path.exists('./train_features_x-{}-{}.npz'.format(feat, number))
     a2 = os.path.exists('./test_features_x-{}-{}.npz'.format(feat, number))
@@ -45,11 +45,13 @@ def _check_exists(feat, number):
     a4 = os.path.exists('./test_features_y-{}-{}.npy'.format(feat, number))
     return a1 and a2 and a3 and a4
 
+
 def _lines_in_file(file_path):
     with open(file_path, 'r') as f:
         for i, _ in enumerate(f):
             pass
     return i + 1
+
 
 def plot_confusion_matrix(cm, n_classes):
     """
@@ -79,12 +81,12 @@ p.add_argument('--show_confusion_matrix', action='store_true',
 p.add_argument('--verbose', action='store_true',
                help='option to print information at regular intervals')
 p.add_argument('--feature', type=str,
-                choices=['best', 'random', 'tfbest', 'tfrandom', 'lda'], default='best', 
-                help='Feature type to use. Default: K Best from TFIDF')
+               choices=['best', 'random', 'tfbest', 'tfrandom', 'lda'], default='best',
+               help='Feature type to use. Default: K Best from TFIDF')
 p.add_argument('--classifier', type=str,
-               choices=['naive-bayes', 'mlp-1', 'mlp-2', 'knn', 'logistic',
-                        'ovo-svm', 'ovo-logistic', 'ovr-svm', 'ovr-logistic'],
-               default='naive-bayes', help='classifier option')
+               choices=['naive-bayes', 'mlp-1', 'mlp-2', 'knn',
+                        'logistic', 'ovo-logistic', 'ovr-logistic'],
+               required=True, help='classifier option')
 p.add_argument('--nfeatures', type=int, default=10000, help='Number of top features to extract')
 p.add_argument('--save_load', action='store_true',
                help='Toggle to save / load features to prevent redundant computation')
@@ -152,19 +154,19 @@ else:
         is_idf = False if feature == 'tfbest' or feature == 'tfrandom' else True
         vectorizer = TfidfVectorizer(input='filename', use_idf=is_idf)
         selector = SelectKBest(mutual_info_classif, k=p.nfeatures)
-                
+
         train_x_tf = vectorizer.fit_transform(train_x)
         if 'random' in feature:
-            train_x_stf = train_x_tf[:,:p.nfeatures]
+            train_x_stf = train_x_tf[:, :p.nfeatures]
         else:
             train_x_stf = selector.fit_transform(train_x_tf, train_y)
-        
+
         test_x_tf = vectorizer.transform(test_x)
         if 'random' in feature:
-            test_x_stf = test_x_tf[:,:p.nfeatures]
+            test_x_stf = test_x_tf[:, :p.nfeatures]
         else:
             test_x_stf = selector.transform(test_x_tf)
-        
+
         if p.save_load:
             if verbose:
                 print("Saving to files...")
@@ -175,8 +177,7 @@ else:
             test_y = np.array(test_y)
             test_y.dump('./test_features_y-{}-{}.npy'.format(feature, p.nfeatures))
     else:
-        print('ERROR: lda not yet implemented')
-        exit(0)
+        raise NotImplementedError("Feature Extraction with LDA is not implemented yet")
 
 if verbose:
     print("Shape of training data: {}".format(train_x_stf.shape))
@@ -189,12 +190,12 @@ if p.classifier == 'naive-bayes':
 elif p.classifier == 'mlp-1':
     clf = MLPClassifier(solver='lbfgs',
                         hidden_layer_sizes=(int(sqrt(p.nfeatures)),)
-                       ).fit(train_x_stf, train_y)
+                        ).fit(train_x_stf, train_y)
 
 elif p.classifier == 'mlp-2':
     clf = MLPClassifier(solver='lbfgs',
                         hidden_layer_sizes=(2 * int(sqrt(p.nfeatures)), int(sqrt(p.nfeatures)))
-                       ).fit(train_x_stf, train_y)
+                        ).fit(train_x_stf, train_y)
 
 elif p.classifier == 'knn':
     clf = KNeighborsClassifier(n_neighbors=11).fit(train_x_stf, train_y)
@@ -203,17 +204,9 @@ elif p.classifier == 'logistic':
     clf = LogisticRegression(class_weight='balanced',
                              multi_class='multinomial', solver='sag').fit(train_x_stf, train_y)
 
-elif p.classifier == 'ovo-svm':
-    base_clf = SVC(kernel='rbf', class_weight='balanced')
-    clf = OneVsOneClassifier(base_clf).fit(train_x_stf, train_y)
-
 elif p.classifier == 'ovo-logistic':
     base_clf = LogisticRegression(class_weight='balanced')
     clf = OneVsOneClassifier(base_clf).fit(train_x_stf, train_y)
-
-elif p.classifier == 'ovr-svm':
-    base_clf = SVC(kernel='rbf', class_weight='balanced')
-    clf = OneVsRestClassifier(base_clf).fit(train_x_stf, train_y)
 
 elif p.classifier == 'ovr-logistic':
     base_clf = LogisticRegression(class_weight='balanced')
