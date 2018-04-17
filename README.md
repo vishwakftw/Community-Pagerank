@@ -2,7 +2,7 @@
 Coursework pertaining to CS6670 : Topics in Data Mining offered in Spring 2018
 
 ## Our Contributions
-====================
+--------------------
 
 + Reproduce results in the paper **Beyond Friendship and Followers: The Wikipedia Social Network** by Johanna Geiss _et al_.
     + The relevant code for this is present in the directories named `community_detection`, `pagerank`.
