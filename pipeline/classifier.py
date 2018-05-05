@@ -81,7 +81,7 @@ p.add_argument('--show_confusion_matrix', action='store_true',
 p.add_argument('--verbose', action='store_true',
                help='option to print information at regular intervals')
 p.add_argument('--feature', type=str,
-               choices=['best', 'random', 'tfbest', 'tfrandom', 'lda'], default='best',
+               choices=['best', 'random', 'tfbest', 'tfrandom', 'lda', 'sorted'], default='best',
                help='Feature type to use. Default: K Best from TFIDF')
 p.add_argument('--classifier', type=str,
                choices=['naive-bayes', 'mlp-1', 'mlp-2', 'knn',
@@ -158,12 +158,16 @@ else:
         train_x_tf = vectorizer.fit_transform(train_x)
         if 'random' in feature:
             train_x_stf = train_x_tf[:, :p.nfeatures]
+        elif 'sorted' in feature:
+            train_x_stf = np.sort(train_x_tf, axis=1)[:, :p.nfeatures]
         else:
             train_x_stf = selector.fit_transform(train_x_tf, train_y)
 
         test_x_tf = vectorizer.transform(test_x)
         if 'random' in feature:
             test_x_stf = test_x_tf[:, :p.nfeatures]
+        elif 'sorted' in feature:
+            test_x_stf = np.sort(test_x_tf, axis=1)[:, :p.nfeatures]
         else:
             test_x_stf = selector.transform(test_x_tf)
 
